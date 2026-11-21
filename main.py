@@ -579,7 +579,6 @@ def analyze_market_data(symbol, interval):
 # =========================================================
 # APEX ANALYSIS ENDPOINT
 # =========================================================
-
 @app.get("/api/analysis")
 def apex_analysis(
     symbol: str = Query("XAU/USD"),
@@ -592,13 +591,10 @@ def apex_analysis(
     ]
 
     if interval not in allowed_intervals:
-
         raise HTTPException(
             status_code=400,
-            detail={
-                "error": "Unsupported timeframe",
-                "allowed": allowed_intervals
-            }
+            detail="Unsupported timeframe"
         )
 
     return analyze_market_data(symbol, interval)
+
