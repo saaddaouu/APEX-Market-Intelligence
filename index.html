@@ -4,69 +4,49 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>APEX Market Intelligence</title>
+<title>APEX | Market Intelligence</title>
 
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 
 <style>
 :root {
-    --bg: #080c12;
+    --bg: #090e15;
     --panel: #101720;
-    --panel2: #151e29;
-    --border: #202c39;
+    --panel2: #141e29;
+    --border: #23303e;
     --text: #e7edf5;
-    --muted: #8493a6;
-    --cyan: #00d5ff;
-    --green: #00c087;
-    --red: #ff5263;
+    --muted: #8795a7;
+    --cyan: #00d2ff;
+    --green: #00d395;
+    --red: #ff5269;
+    --yellow: #f5b942;
 }
 
 * {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
 }
 
 body {
+    margin: 0;
     background: var(--bg);
     color: var(--text);
     font-family: Inter, Arial, sans-serif;
-    min-height: 100vh;
-}
-
-button, select {
-    background: var(--panel2);
-    color: var(--text);
-    border: 1px solid var(--border);
-    padding: 9px 12px;
-    border-radius: 7px;
-    cursor: pointer;
-}
-
-button:hover {
-    border-color: var(--cyan);
-}
-
-button.active {
-    color: var(--cyan);
-    border-color: var(--cyan);
-    background: #102631;
 }
 
 header {
     height: 68px;
-    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
     display: flex;
-    align-items: center;
     justify-content: space-between;
-    padding: 0 25px;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
     background: #0c121a;
 }
 
 .logo {
-    font-size: 22px;
-    font-weight: 800;
-    letter-spacing: 3px;
+    font-size: 23px;
+    font-weight: 900;
+    letter-spacing: 2px;
 }
 
 .logo span {
@@ -74,204 +54,323 @@ header {
 }
 
 .status {
+    font-size: 11px;
     color: var(--green);
-    font-size: 12px;
+    letter-spacing: 1px;
 }
 
 main {
-    max-width: 1600px;
+    padding: 18px;
+    max-width: 1800px;
     margin: auto;
-    padding: 20px;
 }
 
-.topbar {
+.toolbar {
     display: flex;
-    justify-content: space-between;
-    gap: 15px;
     flex-wrap: wrap;
-    margin-bottom: 20px;
-}
-
-.asset-info {
-    display: flex;
+    gap: 10px;
     align-items: center;
-    gap: 15px;
+    margin-bottom: 16px;
 }
 
-.asset-title {
-    font-size: 24px;
-    font-weight: 700;
-}
-
-.asset-sub {
-    color: var(--muted);
-    font-size: 12px;
-    margin-top: 5px;
-}
-
-.price-box {
-    background: var(--panel);
+select, button {
+    background: var(--panel2);
     border: 1px solid var(--border);
-    padding: 12px 18px;
-    border-radius: 10px;
+    color: var(--text);
+    padding: 11px 14px;
+    border-radius: 8px;
+    cursor: pointer;
 }
 
-.price {
-    font-size: 25px;
-    font-weight: 700;
+button:hover, select:hover {
+    border-color: var(--cyan);
 }
 
-.price-label {
-    color: var(--muted);
-    font-size: 11px;
-    margin-bottom: 5px;
+.timeframes {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
 }
 
-.market-grid {
+.tf-btn {
+    padding: 9px 13px;
+}
+
+.tf-btn.active {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: #102632;
+}
+
+.spacer {
+    flex: 1;
+}
+
+.grid {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 12px;
-    margin-bottom: 18px;
+    grid-template-columns: minmax(0, 1fr) 330px;
+    gap: 16px;
 }
 
-.metric {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    padding: 15px;
-    border-radius: 10px;
-}
-
-.metric-title {
-    color: var(--muted);
-    font-size: 12px;
-    margin-bottom: 8px;
-}
-
-.metric-value {
-    font-size: 18px;
-    font-weight: 700;
-}
-
-.chart-card {
+.panel {
     background: var(--panel);
     border: 1px solid var(--border);
     border-radius: 12px;
     overflow: hidden;
 }
 
+.panel-title {
+    padding: 15px 17px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    color: var(--muted);
+}
+
 .chart-toolbar {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    padding: 14px;
-    border-bottom: 1px solid var(--border);
+    padding: 12px 15px;
 }
 
-.toolbar-group {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 5px;
+.symbol-name {
+    font-weight: 700;
 }
 
-.chart-wrap {
-    width: 100%;
-    height: 500px;
-    position: relative;
+.price {
+    font-size: 22px;
+    font-weight: 800;
 }
 
 #chart {
     width: 100%;
-    height: 100%;
+    height: 500px;
 }
 
 .chart-footer {
-    padding: 12px 15px;
+    padding: 10px 15px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
     border-top: 1px solid var(--border);
     color: var(--muted);
+    font-size: 11px;
+}
+
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+}
+
+.bias-card {
+    padding: 20px;
+    text-align: center;
+}
+
+.bias-label {
+    color: var(--muted);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+}
+
+.bias {
+    font-size: 34px;
+    font-weight: 900;
+    margin: 12px 0;
+}
+
+.bias.BUY {
+    color: var(--green);
+}
+
+.bias.SELL {
+    color: var(--red);
+}
+
+.bias.WAIT {
+    color: var(--yellow);
+}
+
+.confidence-label {
+    color: var(--muted);
     font-size: 12px;
+}
+
+.progress {
+    margin-top: 12px;
+    background: #202b36;
+    height: 7px;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    width: 0%;
+    background: var(--cyan);
+    transition: width .3s;
+}
+
+.metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+}
+
+.metric {
+    padding: 15px;
+    border-bottom: 1px solid var(--border);
+}
+
+.metric:nth-child(odd) {
+    border-right: 1px solid var(--border);
+}
+
+.metric-label {
+    color: var(--muted);
+    font-size: 11px;
+    margin-bottom: 7px;
+}
+
+.metric-value {
+    font-weight: 800;
+    font-size: 16px;
+}
+
+.green {
+    color: var(--green);
+}
+
+.red {
+    color: var(--red);
+}
+
+.yellow {
+    color: var(--yellow);
+}
+
+.levels {
+    padding: 15px;
+}
+
+.level-row {
     display: flex;
     justify-content: space-between;
-    flex-wrap: wrap;
     gap: 10px;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.level-row:last-child {
+    border-bottom: 0;
+}
+
+.level-row span:first-child {
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.level-row span:last-child {
+    font-weight: 700;
+}
+
+.trade-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+}
+
+.trade-item {
+    padding: 16px;
+    border-right: 1px solid var(--border);
+}
+
+.trade-item:last-child {
+    border-right: 0;
+}
+
+.trade-item label {
+    display: block;
+    color: var(--muted);
+    font-size: 10px;
+    margin-bottom: 9px;
+}
+
+.trade-item strong {
+    font-size: 15px;
+}
+
+.reasons {
+    padding: 15px;
+    font-size: 12px;
+    line-height: 1.9;
+}
+
+.reason {
+    padding: 6px 0;
+    border-bottom: 1px solid #1e2935;
+}
+
+.loading {
+    color: var(--muted);
+}
+
+.error {
+    color: var(--red);
 }
 
 .bottom-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 15px;
-    margin-top: 18px;
-}
-
-.card {
-    background: var(--panel);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 18px;
-}
-
-.card h3 {
-    font-size: 14px;
-    margin-bottom: 15px;
-}
-
-.watch-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 12px 0;
-    border-bottom: 1px solid var(--border);
-    font-size: 13px;
-}
-
-.watch-row:last-child {
-    border-bottom: none;
-}
-
-.muted {
-    color: var(--muted);
-}
-
-.loading {
-    color: var(--muted);
-    padding: 20px;
-    text-align: center;
+    gap: 16px;
+    margin-top: 16px;
 }
 
 footer {
+    padding: 20px;
     text-align: center;
-    color: var(--muted);
-    padding: 25px;
-    font-size: 11px;
+    color: #657385;
+    font-size: 10px;
 }
 
-@media(max-width: 800px) {
-    header {
-        padding: 0 15px;
-    }
-
-    main {
-        padding: 12px;
-    }
-
-    .market-grid {
-        grid-template-columns: repeat(2, 1fr);
+@media(max-width: 1000px) {
+    .grid {
+        grid-template-columns: 1fr;
     }
 
     .bottom-grid {
         grid-template-columns: 1fr;
     }
 
-    .chart-wrap {
+    #chart {
         height: 400px;
     }
+}
 
-    .asset-title {
-        font-size: 19px;
+@media(max-width: 600px) {
+    main {
+        padding: 10px;
+    }
+
+    header {
+        padding: 0 14px;
+    }
+
+    .trade-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .trade-item {
+        border-bottom: 1px solid var(--border);
+    }
+
+    #chart {
+        height: 340px;
     }
 
     .price {
-        font-size: 21px;
+        font-size: 17px;
     }
 }
 </style>
@@ -281,475 +380,514 @@ footer {
 
 <header>
     <div class="logo">APEX<span>.</span></div>
-    <div class="status">● MARKET DATA CONNECTED</div>
+    <div class="status">● MARKET INTELLIGENCE ONLINE</div>
 </header>
 
 <main>
 
-    <!-- MARKET HEADER -->
+<div class="toolbar">
 
-    <section class="topbar">
+    <select id="symbol">
+        <option value="XAU/USD">XAU/USD · GOLD</option>
+        <option value="EUR/USD">EUR/USD</option>
+        <option value="GBP/USD">GBP/USD</option>
+        <option value="USD/JPY">USD/JPY</option>
+        <option value="BTC/USD">BTC/USD</option>
+        <option value="ETH/USD">ETH/USD</option>
+    </select>
 
-        <div class="asset-info">
-            <div>
-                <div class="asset-title" id="assetTitle">Gold / US Dollar</div>
-                <div class="asset-sub" id="assetSymbol">XAU/USD · LIVE MARKET</div>
-            </div>
-        </div>
+    <div class="timeframes">
+        <button class="tf-btn" data-tf="1min">1m</button>
+        <button class="tf-btn active" data-tf="5min">5m</button>
+        <button class="tf-btn" data-tf="15min">15m</button>
+        <button class="tf-btn" data-tf="30min">30m</button>
+        <button class="tf-btn" data-tf="1h">1H</button>
+        <button class="tf-btn" data-tf="4h">4H</button>
+        <button class="tf-btn" data-tf="1day">1D</button>
+    </div>
 
-        <div class="price-box">
-            <div class="price-label">LIVE PRICE</div>
-            <div class="price" id="livePrice">Loading...</div>
-        </div>
+    <div class="spacer"></div>
 
-    </section>
+    <button id="refresh">↻ Refresh</button>
 
-    <!-- MARKET METRICS -->
+</div>
 
-    <section class="market-grid">
-
-        <div class="metric">
-            <div class="metric-title">OPEN</div>
-            <div class="metric-value" id="openValue">--</div>
-        </div>
-
-        <div class="metric">
-            <div class="metric-title">HIGH</div>
-            <div class="metric-value" id="highValue">--</div>
-        </div>
-
-        <div class="metric">
-            <div class="metric-title">LOW</div>
-            <div class="metric-value" id="lowValue">--</div>
-        </div>
-
-        <div class="metric">
-            <div class="metric-title">CLOSE</div>
-            <div class="metric-value" id="closeValue">--</div>
-        </div>
-
-    </section>
+<div class="grid">
 
     <!-- CHART -->
-
-    <section class="chart-card">
+    <section class="panel">
 
         <div class="chart-toolbar">
-
-            <div class="toolbar-group">
-                <select id="symbolSelect">
-                    <option value="XAU/USD">XAU/USD · Gold</option>
-                    <option value="EUR/USD">EUR/USD</option>
-                    <option value="GBP/USD">GBP/USD</option>
-                    <option value="USD/JPY">USD/JPY</option>
-                    <option value="BTC/USD">BTC/USD</option>
-                    <option value="ETH/USD">ETH/USD</option>
-                </select>
+            <div>
+                <div class="symbol-name" id="chartSymbol">XAU/USD</div>
+                <div class="confidence-label" id="chartStatus">Loading market...</div>
             </div>
-
-            <div class="toolbar-group" id="timeframes">
-                <button data-tf="1min">1m</button>
-                <button data-tf="5min" class="active">5m</button>
-                <button data-tf="15min">15m</button>
-                <button data-tf="30min">30m</button>
-                <button data-tf="1h">1H</button>
-                <button data-tf="4h">4H</button>
-                <button data-tf="1day">1D</button>
-            </div>
-
-            <button id="refreshBtn">↻ Refresh</button>
-
+            <div class="price" id="livePrice">--</div>
         </div>
 
-        <div class="chart-wrap">
-            <div id="chart"></div>
-        </div>
+        <div id="chart"></div>
 
         <div class="chart-footer">
-            <span id="chartStatus">Initializing chart...</span>
-            <span>Source: Twelve Data</span>
+            <span>EMA 20: <b id="ema20">--</b></span>
+            <span>EMA 50: <b id="ema50">--</b></span>
+            <span>EMA 200: <b id="ema200">--</b></span>
+            <span>RSI: <b id="rsi">--</b></span>
         </div>
 
     </section>
 
-    <!-- LOWER PANELS -->
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
 
-    <section class="bottom-grid">
+        <section class="panel bias-card">
 
-        <div class="card">
-            <h3>MARKET WATCH</h3>
+            <div class="bias-label">APEX MARKET BIAS</div>
 
-            <div class="watch-row">
-                <span>XAU/USD</span>
-                <span id="watchGold">--</span>
+            <div class="bias WAIT" id="bias">WAIT</div>
+
+            <div class="confidence-label">
+                Confluence Score:
+                <strong id="confidence">--</strong>
             </div>
 
-            <div class="watch-row">
-                <span>EUR/USD</span>
-                <span id="watchEur">--</span>
+            <div class="progress">
+                <div class="progress-bar" id="confidenceBar"></div>
             </div>
 
-            <div class="watch-row">
-                <span>GBP/USD</span>
-                <span id="watchGbp">--</span>
+        </section>
+
+        <section class="panel">
+
+            <div class="panel-title">MARKET STRUCTURE</div>
+
+            <div class="metrics">
+
+                <div class="metric">
+                    <div class="metric-label">TREND</div>
+                    <div class="metric-value" id="trend">--</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">STRUCTURE</div>
+                    <div class="metric-value" id="structure">--</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">RSI 14</div>
+                    <div class="metric-value" id="rsiCard">--</div>
+                </div>
+
+                <div class="metric">
+                    <div class="metric-label">ATR 14</div>
+                    <div class="metric-value" id="atr">--</div>
+                </div>
+
             </div>
 
-            <div class="watch-row">
-                <span>BTC/USD</span>
-                <span id="watchBtc">--</span>
+        </section>
+
+        <section class="panel">
+
+            <div class="panel-title">KEY LEVELS</div>
+
+            <div class="levels">
+
+                <div class="level-row">
+                    <span>Resistance</span>
+                    <span class="red" id="resistance">--</span>
+                </div>
+
+                <div class="level-row">
+                    <span>Current Price</span>
+                    <span id="levelPrice">--</span>
+                </div>
+
+                <div class="level-row">
+                    <span>Support</span>
+                    <span class="green" id="support">--</span>
+                </div>
+
             </div>
 
+        </section>
+
+    </aside>
+
+</div>
+
+<!-- TRADE PLAN -->
+<section class="panel" style="margin-top:16px">
+
+    <div class="panel-title">APEX TRADE PLAN</div>
+
+    <div class="trade-grid">
+
+        <div class="trade-item">
+            <label>ENTRY</label>
+            <strong id="entry">--</strong>
         </div>
 
-        <div class="card">
-            <h3>APEX SYSTEM</h3>
+        <div class="trade-item">
+            <label>ENTRY ZONE</label>
+            <strong id="entryZone">--</strong>
+        </div>
 
-            <div class="watch-row">
-                <span class="muted">Market Data</span>
-                <span id="connectionStatus">Connecting...</span>
+        <div class="trade-item">
+            <label>STOP LOSS</label>
+            <strong class="red" id="stopLoss">--</strong>
+        </div>
+
+        <div class="trade-item">
+            <label>TAKE PROFIT 1</label>
+            <strong class="green" id="tp1">--</strong>
+        </div>
+
+        <div class="trade-item">
+            <label>TAKE PROFIT 2 / 3</label>
+            <strong class="green" id="tp23">--</strong>
+        </div>
+
+    </div>
+
+</section>
+
+<!-- BOTTOM -->
+<div class="bottom-grid">
+
+    <section class="panel">
+
+        <div class="panel-title">ANALYSIS REASONS</div>
+
+        <div class="reasons" id="reasons">
+            <div class="loading">Waiting for analysis...</div>
+        </div>
+
+    </section>
+
+    <section class="panel">
+
+        <div class="panel-title">ENGINE STATUS</div>
+
+        <div class="levels">
+
+            <div class="level-row">
+                <span>Analysis Engine</span>
+                <span class="green">ONLINE</span>
             </div>
 
-            <div class="watch-row">
-                <span class="muted">Active Symbol</span>
-                <span id="systemSymbol">XAU/USD</span>
+            <div class="level-row">
+                <span>Market Data</span>
+                <span class="green" id="dataStatus">CONNECTING</span>
             </div>
 
-            <div class="watch-row">
-                <span class="muted">Timeframe</span>
-                <span id="systemTF">5min</span>
-            </div>
-
-            <div class="watch-row">
-                <span class="muted">Last Update</span>
+            <div class="level-row">
+                <span>Last Update</span>
                 <span id="lastUpdate">--</span>
             </div>
 
+            <div class="level-row">
+                <span>Selected Market</span>
+                <span id="selectedMarket">XAU/USD</span>
+            </div>
+
         </div>
 
     </section>
+
+</div>
 
 </main>
 
 <footer>
-    APEX MARKET INTELLIGENCE · DATA PROVIDED BY TWELVE DATA
+    APEX MARKET INTELLIGENCE · DATA-DRIVEN ANALYSIS · NOT FINANCIAL ADVICE
 </footer>
 
 <script>
 
-// ========================================================
-// APEX CONFIG
-// ========================================================
+const API = "https://apex-market-intelligence-7n8f.onrender.com";
 
-const API_BASE = "https://apex-market-intelligence-7n8f.onrender.com";
-
-let currentSymbol = "XAU/USD";
-let currentInterval = "5min";
-
+let selectedSymbol = "XAU/USD";
+let selectedTF = "5min";
 let chart;
 let candleSeries;
-let currentCandles = [];
 
-const chartContainer = document.getElementById("chart");
+const chartEl = document.getElementById("chart");
 
+chart = LightweightCharts.createChart(chartEl, {
+    layout: {
+        background: { color: "#101720" },
+        textColor: "#8998aa"
+    },
+    grid: {
+        vertLines: { color: "#1d2935" },
+        horzLines: { color: "#1d2935" }
+    },
+    rightPriceScale: {
+        borderColor: "#263341"
+    },
+    timeScale: {
+        borderColor: "#263341",
+        timeVisible: true,
+        secondsVisible: false
+    },
+    crosshair: {
+        mode: LightweightCharts.CrosshairMode.Normal
+    }
+});
 
-// ========================================================
-// INITIALIZE CHART
-// ========================================================
+candleSeries = chart.addCandlestickSeries({
+    upColor: "#00d395",
+    downColor: "#ff5269",
+    borderUpColor: "#00d395",
+    borderDownColor: "#ff5269",
+    wickUpColor: "#00d395",
+    wickDownColor: "#ff5269"
+});
 
-function initializeChart() {
+function formatPrice(value) {
 
-    chart = LightweightCharts.createChart(chartContainer, {
+    if (value === null || value === undefined || isNaN(value))
+        return "--";
 
-        layout: {
-            background: { color: "#101720" },
-            textColor: "#a9b7c8"
-        },
-
-        grid: {
-            vertLines: { color: "#1a2531" },
-            horzLines: { color: "#1a2531" }
-        },
-
-        crosshair: {
-            mode: LightweightCharts.CrosshairMode.Normal
-        },
-
-        rightPriceScale: {
-            borderColor: "#253241"
-        },
-
-        timeScale: {
-            borderColor: "#253241",
-            timeVisible: true,
-            secondsVisible: false
-        },
-
-        handleScroll: true,
-        handleScale: true
-    });
-
-    candleSeries = chart.addCandlestickSeries({
-
-        upColor: "#00c087",
-        downColor: "#ff5263",
-
-        borderUpColor: "#00c087",
-        borderDownColor: "#ff5263",
-
-        wickUpColor: "#00c087",
-        wickDownColor: "#ff5263"
-
-    });
-
-    window.addEventListener("resize", resizeChart);
-
-    resizeChart();
+    return Number(value).toFixed(2);
 }
 
+function formatTime(value) {
 
-// ========================================================
-// CHART RESIZE
-// ========================================================
+    if (!value) return "--";
 
-function resizeChart() {
-
-    if (!chart) return;
-
-    chart.applyOptions({
-        width: chartContainer.clientWidth,
-        height: chartContainer.clientHeight
-    });
+    return new Date(value).toLocaleTimeString();
 }
 
+function setText(id, value) {
 
-// ========================================================
-// LOAD CANDLES
-// ========================================================
+    document.getElementById(id).textContent = value ?? "--";
+}
 
 async function loadCandles() {
 
-    document.getElementById("chartStatus").textContent = "Loading candles...";
+    const url = `${API}/api/market/candles?symbol=${encodeURIComponent(selectedSymbol)}&interval=${selectedTF}&outputsize=200`;
 
-    document.getElementById("systemSymbol").textContent = currentSymbol;
-    document.getElementById("systemTF").textContent = currentInterval;
+    const response = await fetch(url);
 
-    try {
+    if (!response.ok)
+        throw new Error("Candle request failed");
 
-        const url =
-            `${API_BASE}/api/market/candles` +
-            `?symbol=${encodeURIComponent(currentSymbol)}` +
-            `&interval=${encodeURIComponent(currentInterval)}` +
-            `&outputsize=100`;
+    const data = await response.json();
 
-        const response = await fetch(url);
+    const formatted = data.candles.map(c => {
 
-        const result = await response.json();
+        let timestamp = c.time;
 
-        if (!response.ok) {
+        if (typeof timestamp === "string") {
 
-            throw new Error(
-                typeof result.detail === "string"
-                    ? result.detail
-                    : JSON.stringify(result.detail)
+            timestamp = timestamp.replace(" ", "T");
+
+            if (!timestamp.endsWith("Z"))
+                timestamp += "Z";
+
+            timestamp = Math.floor(
+                new Date(timestamp).getTime() / 1000
             );
         }
 
-        if (!result.candles || result.candles.length === 0) {
+        return {
+            time: timestamp,
+            open: c.open,
+            high: c.high,
+            low: c.low,
+            close: c.close
+        };
 
-            throw new Error("No candles received.");
-        }
+    }).filter(c => Number.isFinite(c.time));
 
-        currentCandles = result.candles;
+    candleSeries.setData(formatted);
 
-        candleSeries.setData(
-            currentCandles.map(c => ({
-                time: Math.floor(new Date(c.time.replace(" ", "T") + "Z").getTime() / 1000),
-                open: c.open,
-                high: c.high,
-                low: c.low,
-                close: c.close
-            }))
+    chart.timeScale().fitContent();
+}
+
+async function loadPrice() {
+
+    const url = `${API}/api/market/price?symbol=${encodeURIComponent(selectedSymbol)}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok)
+        throw new Error("Price request failed");
+
+    const data = await response.json();
+
+    setText("livePrice", formatPrice(data.price));
+    setText("levelPrice", formatPrice(data.price));
+}
+
+async function loadAnalysis() {
+
+    const url = `${API}/api/analysis?symbol=${encodeURIComponent(selectedSymbol)}&interval=${selectedTF}`;
+
+    const response = await fetch(url);
+
+    if (!response.ok)
+        throw new Error("Analysis request failed");
+
+    const data = await response.json();
+
+    const market = data.market || {};
+    const decision = data.decision || {};
+    const indicators = data.indicators || {};
+    const levels = data.levels || {};
+    const plan = data.trade_plan || {};
+    const targets = plan.take_profit || {};
+
+    // Bias
+    const bias = decision.bias || "WAIT";
+
+    const biasEl = document.getElementById("bias");
+
+    biasEl.textContent = bias;
+    biasEl.className = `bias ${bias}`;
+
+    setText("confidence", `${decision.confidence_score ?? 0}/100`);
+
+    document.getElementById("confidenceBar").style.width =
+        `${decision.confidence_score ?? 0}%`;
+
+    // Market
+    setText("trend", market.trend);
+    setText("structure", market.structure);
+    setText("chartSymbol", selectedSymbol);
+    setText("selectedMarket", selectedSymbol);
+    setText("chartStatus", `${selectedTF} · ${market.trend || "Unknown"}`);
+
+    // Indicators
+    setText("ema20", formatPrice(indicators.ema20));
+    setText("ema50", formatPrice(indicators.ema50));
+    setText("ema200", formatPrice(indicators.ema200));
+    setText("rsi", indicators.rsi14 ?? "--");
+    setText("rsiCard", indicators.rsi14 ?? "--");
+    setText("atr", formatPrice(indicators.atr14));
+
+    // Levels
+    setText("support", formatPrice(levels.support));
+    setText("resistance", formatPrice(levels.resistance));
+
+    // Trade plan
+    setText("entry", formatPrice(plan.entry));
+
+    if (plan.entry_zone) {
+
+        setText(
+            "entryZone",
+            `${formatPrice(plan.entry_zone.low)} - ${formatPrice(plan.entry_zone.high)}`
         );
 
-        chart.timeScale().fitContent();
+    } else {
 
-        updateMetrics();
-
-        document.getElementById("chartStatus").textContent =
-            `${result.count} candles loaded · ${currentSymbol} · ${currentInterval}`;
-
-        document.getElementById("connectionStatus").textContent = "Connected";
-
-        document.getElementById("lastUpdate").textContent =
-            new Date().toLocaleTimeString();
-
-    } catch (error) {
-
-        console.error("APEX Chart Error:", error);
-
-        document.getElementById("chartStatus").textContent =
-            "Chart error: " + error.message;
-
-        document.getElementById("connectionStatus").textContent = "Data Error";
+        setText("entryZone", "--");
     }
+
+    setText("stopLoss", formatPrice(plan.stop_loss));
+    setText("tp1", formatPrice(targets.TP1));
+
+    setText(
+        "tp23",
+        `${formatPrice(targets.TP2)} / ${formatPrice(targets.TP3)}`
+    );
+
+    // Reasons
+    const reasonsEl = document.getElementById("reasons");
+
+    reasonsEl.innerHTML = "";
+
+    const reasons = decision.reasons || [];
+
+    if (reasons.length === 0) {
+
+        reasonsEl.textContent = "No additional analysis reasons.";
+
+    } else {
+
+        reasons.forEach(reason => {
+
+            const div = document.createElement("div");
+
+            div.className = "reason";
+            div.textContent = "• " + reason;
+
+            reasonsEl.appendChild(div);
+        });
+    }
+
+    setText("lastUpdate", formatTime(data.timestamp));
+    setText("dataStatus", "LIVE");
 }
 
+async function refreshDashboard() {
 
-// ========================================================
-// METRICS
-// ========================================================
-
-function updateMetrics() {
-
-    if (!currentCandles.length) return;
-
-    const latest = currentCandles[currentCandles.length - 1];
-
-    document.getElementById("openValue").textContent = latest.open.toFixed(2);
-    document.getElementById("highValue").textContent = latest.high.toFixed(2);
-    document.getElementById("lowValue").textContent = latest.low.toFixed(2);
-    document.getElementById("closeValue").textContent = latest.close.toFixed(2);
-}
-
-
-// ========================================================
-// LIVE PRICE
-// ========================================================
-
-async function loadPrice(symbol = currentSymbol) {
+    setText("dataStatus", "UPDATING");
 
     try {
 
-        const response = await fetch(
-            `${API_BASE}/api/market/price?symbol=${encodeURIComponent(symbol)}`
-        );
+        await Promise.all([
+            loadCandles(),
+            loadPrice(),
+            loadAnalysis()
+        ]);
 
-        const result = await response.json();
-
-        if (!response.ok) {
-            throw new Error(result.detail || "Price request failed");
-        }
-
-        const price = Number(result.price);
-
-        if (!Number.isFinite(price)) return;
-
-        if (symbol === currentSymbol) {
-
-            document.getElementById("livePrice").textContent =
-                price.toFixed( symbol.includes("JPY") ? 3 : 2 );
-
-        }
-
-        const watchMap = {
-            "XAU/USD": "watchGold",
-            "EUR/USD": "watchEur",
-            "GBP/USD": "watchGbp",
-            "BTC/USD": "watchBtc"
-        };
-
-        const elementId = watchMap[symbol];
-
-        if (elementId) {
-
-            document.getElementById(elementId).textContent =
-                price.toFixed(symbol === "BTC/USD" ? 2 : 4);
-        }
+        setText("dataStatus", "LIVE");
 
     } catch (error) {
 
-        console.error("APEX Price Error:", error);
+        console.error(error);
 
+        setText("dataStatus", "ERROR");
+        setText("chartStatus", "Data connection error");
     }
 }
 
+// Symbol change
+document.getElementById("symbol").addEventListener("change", function() {
 
-// ========================================================
-// SYMBOL CHANGE
-// ========================================================
+    selectedSymbol = this.value;
 
-document.getElementById("symbolSelect").addEventListener("change", async function() {
-
-    currentSymbol = this.value;
-
-    document.getElementById("assetTitle").textContent = currentSymbol;
-    document.getElementById("assetSymbol").textContent = currentSymbol + " · LIVE MARKET";
-
-    await loadCandles();
-    await loadPrice();
-
+    refreshDashboard();
 });
 
+// Timeframe change
+document.querySelectorAll(".tf-btn").forEach(button => {
 
-// ========================================================
-// TIMEFRAME CHANGE
-// ========================================================
+    button.addEventListener("click", function() {
 
-document.querySelectorAll("#timeframes button").forEach(button => {
-
-    button.addEventListener("click", async function() {
-
-        document.querySelectorAll("#timeframes button").forEach(b => {
+        document.querySelectorAll(".tf-btn").forEach(b => {
             b.classList.remove("active");
         });
 
         this.classList.add("active");
 
-        currentInterval = this.dataset.tf;
+        selectedTF = this.dataset.tf;
 
-        await loadCandles();
-
+        refreshDashboard();
     });
-
 });
 
+// Refresh
+document.getElementById("refresh").addEventListener("click", refreshDashboard);
 
-// ========================================================
-// REFRESH BUTTON
-// ========================================================
+// Chart resize
+window.addEventListener("resize", () => {
 
-document.getElementById("refreshBtn").addEventListener("click", async function() {
-
-    await loadCandles();
-    await loadPrice();
-
+    chart.applyOptions({
+        width: chartEl.clientWidth
+    });
 });
 
+// Initial load
+refreshDashboard();
 
-// ========================================================
-// AUTO UPDATE
-// ========================================================
-
-// Refresh candles every 60 seconds
+// Auto updates
+setInterval(loadPrice, 30000);
+setInterval(loadAnalysis, 60000);
 setInterval(loadCandles, 60000);
-
-// Refresh active price every 30 seconds
-setInterval(() => loadPrice(currentSymbol), 30000);
-
-// Refresh watchlist prices every 60 seconds
-setInterval(() => {
-
-    loadPrice("XAU/USD");
-    loadPrice("EUR/USD");
-    loadPrice("GBP/USD");
-    loadPrice("BTC/USD");
-
-}, 60000);
-
-
-// ========================================================
-// START APEX
-// ========================================================
-
-initializeChart();
-
-loadCandles();
-loadPrice("XAU/USD");
-
-// Initial watchlist
-loadPrice("EUR/USD");
-loadPrice("GBP/USD");
-loadPrice("BTC/USD");
 
 </script>
 
