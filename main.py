@@ -1,6 +1,258 @@
 
+import os
+import requests
+
+from pathlib import Path
+from datetime import datetime, timezone
+
+from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+
+
 # =========================================================
-# APEX MARKET ANALYSIS ENGINE V2
+# APEX MARKET INTELLIGENCE
+# =========================================================
+
+APP_VERSION = "2.0.0"
+BASE_URL = "https://api.twelvedata.com"
+API_KEY = os.getenv("TWELVE_DATA_API_KEY")
+ROOT_DIR = Path(__file__).resolve().parent
+INDEX_FILE = ROOT_DIR / "index.html"
+
+app = FastAPI(
+    title="APEX Market Intelligence",
+    version=APP_VERSION
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+# =========================================================
+# DASHBOARD
+# =========================================================
+
+@app.get("/", include_in_schema=False)
+def dashboard():
+
+    if not INDEX_FILE.exists():
+        raise HTTPException(404, "Dashboard file not found")
+
+    return FileResponse(INDEX_FILE)
+
+
+# =========================================================
+# HEALTH
+# =========================================================
+
+@app.get("/api/health")
+def health():
+
+    return {
+        "status": "online",
+        "project": "APEX Market Intelligence",
+        "version": APP_VERSION,
+        "provider": "Twelve Data",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# =========================================================
+# ENGINES
+# =========================================================
+
+@app.get("/api/engines")
+def engines():
+
+    return {
+        "engines": [
+            "Market Data Engine",
+            "Trend Engine",
+            "Market Structure Engine",
+            "Support & Resistance Engine",
+            "Momentum Engine",
+            "Decision Engine V2",
+            "Risk Management Engine"
+        ]
+    }
+
+
+# =========================================================
+# TWELVE DATA CONNECTION
+# =========================================================
+
+def twelve_data_request(endpoint, params):
+
+    if not API_KEY:
+        raise HTTPException(500, "API key not configured")
+
+    params = dict(params)
+    params["apikey"] = API_KEY
+
+    try:
+
+        response = requests.get(
+            f"{BASE_URL}/{endpoint}",
+            params=params,
+            timeout=20
+        )
+
+        data = response.json()
+
+    except requests.RequestException:
+
+        raise HTTPException(502, "Market data connection failed")
+
+    except ValueError:
+
+        raise HTTPException(502, "Invalid provider response")
+
+    if not isinstance(data, dict):
+        raise HTTPException(502, "Unexpected provider response")
+
+    if response.status_code >= 400 or data.get("status") == "error":
+
+        raise HTTPException(
+            502,
+            detail={
+                "provider": "Twelve Data",
+                "message": data.get("message", "Market data error"),
+                "code": data.get("code")
+            }
+        )
+
+    return data
+
+
+# =========================================================
+# LIVE PRICE
+# =========================================================
+
+@app.get("/api/market/price")
+def market_price(symbol: str = Query("XAU/USD")):
+
+    data = twelve_data_request(
+        "price",
+        {"symbol": symbol}
+    )
+
+    try:
+        price = float(data["price"])
+
+    except (KeyError, TypeError, ValueError):
+
+        raise HTTPException(502, "Invalid price data")
+
+    return {
+        "symbol": symbol,
+        "price": price,
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# =========================================================
+# CANDLES
+# =========================================================
+
+@app.get("/api/market/candles")
+def market_candles(
+    symbol: str = Query("XAU/USD"),
+    interval: str = Query("5min"),
+    outputsize: int = Query(100, ge=1, le=5000)
+):
+
+    allowed = [
+        "1min", "5min", "15min", "30min",
+        "45min", "1h", "2h", "4h",
+        "1day", "1week", "1month"
+    ]
+
+    if interval not in allowed:
+        raise HTTPException(400, "Unsupported timeframe")
+
+    data = twelve_data_request(
+        "time_series",
+        {
+            "symbol": symbol,
+            "interval": interval,
+            "outputsize": outputsize,
+            "timezone": "UTC"
+        }
+    )
+
+    values = data.get("values", [])
+
+    candles = []
+
+    try:
+
+        for c in reversed(values):
+
+            candles.append({
+                "time": c["datetime"],
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"]),
+                "volume": float(c.get("volume") or 0)
+            })
+
+    except (KeyError, TypeError, ValueError):
+
+        raise HTTPException(502, "Candle formatting error")
+
+    if not candles:
+        raise HTTPException(502, "No candles received")
+
+    return {
+        "symbol": symbol,
+        "interval": interval,
+        "count": len(candles),
+        "candles": candles
+    }
+
+
+# =========================================================
+# SYMBOLS
+# =========================================================
+
+@app.get("/api/market/symbols")
+def symbols():
+
+    return {
+        "symbols": [
+            "XAU/USD",
+            "EUR/USD",
+            "GBP/USD",
+            "USD/JPY",
+            "BTC/USD",
+            "ETH/USD"
+        ]
+    }
+
+
+# =========================================================
+# TIMEFRAMES
+# =========================================================
+
+@app.get("/api/market/timeframes")
+def timeframes():
+
+    return {
+        "timeframes": [
+            "1min", "5min", "15min",
+            "30min", "1h", "4h", "1day"
+        ]
+    }
+
+
+# =========================================================
+# EMA
 # =========================================================
 
 def calculate_ema(values, period):
@@ -11,11 +263,15 @@ def calculate_ema(values, period):
     multiplier = 2 / (period + 1)
     ema = sum(values[:period]) / period
 
-    for price in values[period:]:
-        ema = price * multiplier + ema * (1 - multiplier)
+    for value in values[period:]:
+        ema = value * multiplier + ema * (1 - multiplier)
 
     return round(ema, 6)
 
+
+# =========================================================
+# RSI
+# =========================================================
 
 def calculate_rsi(values, period=14):
 
@@ -36,14 +292,15 @@ def calculate_rsi(values, period=14):
     for i in range(period, len(gains)):
 
         avg_gain = (
-            (avg_gain * (period - 1)) + gains[i]
+            avg_gain * (period - 1) + gains[i]
         ) / period
 
         avg_loss = (
-            (avg_loss * (period - 1)) + losses[i]
+            avg_loss * (period - 1) + losses[i]
         ) / period
 
     if avg_loss == 0:
+
         return 100.0 if avg_gain > 0 else 50.0
 
     rs = avg_gain / avg_loss
@@ -51,90 +308,112 @@ def calculate_rsi(values, period=14):
     return round(100 - (100 / (1 + rs)), 2)
 
 
+# =========================================================
+# ATR
+# =========================================================
+
 def calculate_atr(candles, period=14):
 
     if len(candles) < period + 1:
         return None
 
-    true_ranges = []
+    ranges = []
 
     for i in range(1, len(candles)):
 
-        high = candles[i]["high"]
-        low = candles[i]["low"]
-        previous_close = candles[i - 1]["close"]
+        current = candles[i]
+        previous = candles[i - 1]["close"]
 
-        true_range = max(
-            high - low,
-            abs(high - previous_close),
-            abs(low - previous_close)
+        tr = max(
+            current["high"] - current["low"],
+            abs(current["high"] - previous),
+            abs(current["low"] - previous)
         )
 
-        true_ranges.append(true_range)
+        ranges.append(tr)
 
-    atr = sum(true_ranges[:period]) / period
+    atr = sum(ranges[:period]) / period
 
-    for tr in true_ranges[period:]:
-        atr = ((atr * (period - 1)) + tr) / period
+    for value in ranges[period:]:
+
+        atr = (
+            atr * (period - 1) + value
+        ) / period
 
     return round(atr, 6)
 
 
+# =========================================================
+# SWING DETECTION
+# =========================================================
+
 def find_swings(candles, strength=3):
 
-    swing_highs = []
-    swing_lows = []
+    highs = []
+    lows = []
 
     for i in range(strength, len(candles) - strength):
 
-        high = candles[i]["high"]
-        low = candles[i]["low"]
+        current = candles[i]
 
         left = candles[i - strength:i]
         right = candles[i + 1:i + strength + 1]
 
-        if all(high > c["high"] for c in left + right):
+        if all(
+            current["high"] > x["high"]
+            for x in left + right
+        ):
 
-            swing_highs.append({
+            highs.append({
                 "index": i,
-                "price": high
+                "price": current["high"]
             })
 
-        if all(low < c["low"] for c in left + right):
+        if all(
+            current["low"] < x["low"]
+            for x in left + right
+        ):
 
-            swing_lows.append({
+            lows.append({
                 "index": i,
-                "price": low
+                "price": current["low"]
             })
 
-    return swing_highs, swing_lows
+    return highs, lows
 
 
-def market_structure(swing_highs, swing_lows):
+# =========================================================
+# MARKET STRUCTURE
+# =========================================================
 
-    if len(swing_highs) < 2 or len(swing_lows) < 2:
+def detect_structure(highs, lows):
 
+    if len(highs) < 2 or len(lows) < 2:
         return "UNDEFINED"
 
-    last_high = swing_highs[-1]["price"]
-    previous_high = swing_highs[-2]["price"]
+    hh = highs[-1]["price"] > highs[-2]["price"]
+    hl = lows[-1]["price"] > lows[-2]["price"]
 
-    last_low = swing_lows[-1]["price"]
-    previous_low = swing_lows[-2]["price"]
+    lh = highs[-1]["price"] < highs[-2]["price"]
+    ll = lows[-1]["price"] < lows[-2]["price"]
 
-    if last_high > previous_high and last_low > previous_low:
+    if hh and hl:
         return "BULLISH (HH + HL)"
 
-    if last_high < previous_high and last_low < previous_low:
+    if lh and ll:
         return "BEARISH (LH + LL)"
 
-    if last_high > previous_high and last_low < previous_low:
+    if hh and ll:
         return "EXPANDING"
 
     return "RANGING / TRANSITION"
 
 
-def calculate_decision_engine(
+# =========================================================
+# DECISION ENGINE V2
+# =========================================================
+
+def decision_engine(
     price,
     ema20,
     ema50,
@@ -146,139 +425,116 @@ def calculate_decision_engine(
     resistance
 ):
 
-    bullish_score = 0
-    bearish_score = 0
+    bull = 0
+    bear = 0
     reasons = []
 
-    # -----------------------------------------------------
-    # TREND
-    # -----------------------------------------------------
-
+    # EMA direction
     if ema20 > ema50:
-        bullish_score += 2
+
+        bull += 2
         reasons.append("EMA20 above EMA50")
 
     elif ema20 < ema50:
-        bearish_score += 2
+
+        bear += 2
         reasons.append("EMA20 below EMA50")
 
-    # -----------------------------------------------------
-    # MAJOR TREND
-    # -----------------------------------------------------
-
+    # Major trend
     if price > ema200:
-        bullish_score += 1
+
+        bull += 1
         reasons.append("Price above EMA200")
 
     elif price < ema200:
-        bearish_score += 1
+
+        bear += 1
         reasons.append("Price below EMA200")
 
-    # -----------------------------------------------------
-    # MARKET STRUCTURE
-    # -----------------------------------------------------
-
+    # Structure
     if structure.startswith("BULLISH"):
-        bullish_score += 2
-        reasons.append("Bullish market structure")
+
+        bull += 2
+        reasons.append("Bullish structure")
 
     elif structure.startswith("BEARISH"):
-        bearish_score += 2
-        reasons.append("Bearish market structure")
 
-    # -----------------------------------------------------
-    # RSI MOMENTUM
-    # -----------------------------------------------------
+        bear += 2
+        reasons.append("Bearish structure")
 
+    # Momentum
     if rsi is not None:
 
-        if 50 <= rsi < 70:
-            bullish_score += 1
-            reasons.append("Bullish RSI momentum")
+        if 50 < rsi < 70:
 
-        elif 30 < rsi <= 50:
-            bearish_score += 1
-            reasons.append("Bearish RSI momentum")
+            bull += 1
+            reasons.append("Positive RSI momentum")
+
+        elif 30 < rsi < 50:
+
+            bear += 1
+            reasons.append("Negative RSI momentum")
 
         elif rsi >= 70:
-            reasons.append("RSI overbought - buy caution")
+
+            reasons.append("Overbought")
 
         elif rsi <= 30:
-            reasons.append("RSI oversold - sell caution")
 
-    # -----------------------------------------------------
-    # PRICE EXTENSION
-    # -----------------------------------------------------
+            reasons.append("Oversold")
 
-    extended_buy = (
-        rsi is not None and rsi >= 70
+    # Location
+    near_support = (
+        atr is not None
+        and price >= support
+        and price - support <= atr
     )
 
-    extended_sell = (
-        rsi is not None and rsi <= 30
+    near_resistance = (
+        atr is not None
+        and price <= resistance
+        and resistance - price <= atr
     )
-
-    # -----------------------------------------------------
-    # SUPPORT / RESISTANCE PROXIMITY
-    # -----------------------------------------------------
-
-    near_support = price > support and (
-        price - support
-    ) <= atr * 1.0
-
-    near_resistance = price < resistance and (
-        resistance - price
-    ) <= atr * 1.0
 
     if near_support:
-        reasons.append("Price near support")
+        reasons.append("Near support")
 
     if near_resistance:
-        reasons.append("Price near resistance")
+        reasons.append("Near resistance")
 
-    # -----------------------------------------------------
-    # FINAL DECISION
-    # -----------------------------------------------------
+    # Overextension
+    overbought = rsi is not None and rsi >= 70
+    oversold = rsi is not None and rsi <= 30
 
+    # Decision
     bias = "WAIT"
 
     if (
-        bullish_score >= 5
-        and bullish_score > bearish_score
-        and not extended_buy
+        bull >= 5
+        and bull > bear
+        and not overbought
         and not near_resistance
     ):
 
         bias = "BUY"
 
     elif (
-        bearish_score >= 5
-        and bearish_score > bullish_score
-        and not extended_sell
+        bear >= 5
+        and bear > bull
+        and not oversold
         and not near_support
     ):
 
         bias = "SELL"
 
-    # -----------------------------------------------------
-    # CONFIDENCE SCORE
-    # -----------------------------------------------------
+    total = bull + bear
 
-    total_score = bullish_score + bearish_score
+    confidence = (
+        round(max(bull, bear) / total * 100)
+        if total else 0
+    )
 
-    if total_score > 0:
-
-        raw_confidence = (
-            max(bullish_score, bearish_score)
-            / total_score
-        ) * 100
-
-    else:
-
-        raw_confidence = 0
-
-    # Confidence is a confluence score, not win probability.
-    confidence = min(round(raw_confidence), 85)
+    confidence = min(confidence, 85)
 
     if bias == "WAIT":
         confidence = min(confidence, 55)
@@ -286,17 +542,17 @@ def calculate_decision_engine(
     return {
         "bias": bias,
         "confidence": confidence,
-        "bullish_score": bullish_score,
-        "bearish_score": bearish_score,
+        "bullish_score": bull,
+        "bearish_score": bear,
         "near_support": near_support,
         "near_resistance": near_resistance,
-        "extended": extended_buy or extended_sell,
+        "overextended": overbought or oversold,
         "reasons": reasons
     }
 
 
 # =========================================================
-# ANALYSIS CORE
+# ANALYSIS ENGINE
 # =========================================================
 
 def analyze_market_data(symbol, interval):
@@ -311,20 +567,20 @@ def analyze_market_data(symbol, interval):
         }
     )
 
-    raw_values = data.get("values", [])
+    values = data.get("values", [])
 
-    if len(raw_values) < 200:
+    if len(values) < 200:
 
         raise HTTPException(
-            status_code=502,
-            detail="At least 200 candles are required for analysis."
+            502,
+            "Insufficient candle history"
         )
 
     candles = []
 
     try:
 
-        for c in reversed(raw_values):
+        for c in reversed(values):
 
             candles.append({
                 "time": c["datetime"],
@@ -337,14 +593,13 @@ def analyze_market_data(symbol, interval):
     except (ValueError, TypeError, KeyError):
 
         raise HTTPException(
-            status_code=502,
-            detail="Invalid candle data received."
+            502,
+            "Invalid candle data"
         )
 
     closes = [c["close"] for c in candles]
 
-    current = candles[-1]
-    price = current["close"]
+    price = closes[-1]
 
     ema20 = calculate_ema(closes, 20)
     ema50 = calculate_ema(closes, 50)
@@ -355,7 +610,7 @@ def analyze_market_data(symbol, interval):
 
     swing_highs, swing_lows = find_swings(candles)
 
-    structure = market_structure(
+    structure = detect_structure(
         swing_highs,
         swing_lows
     )
@@ -372,10 +627,7 @@ def analyze_market_data(symbol, interval):
         else max(c["high"] for c in candles[-50:])
     )
 
-    # -----------------------------------------------------
-    # TREND
-    # -----------------------------------------------------
-
+    # Trend
     if price > ema20 > ema50:
         trend = "BULLISH"
 
@@ -385,39 +637,35 @@ def analyze_market_data(symbol, interval):
     else:
         trend = "SIDEWAYS / MIXED"
 
-    # -----------------------------------------------------
-    # DECISION
-    # -----------------------------------------------------
-
-    decision = calculate_decision_engine(
-        price=price,
-        ema20=ema20,
-        ema50=ema50,
-        ema200=ema200,
-        rsi=rsi,
-        atr=atr,
-        structure=structure,
-        support=support,
-        resistance=resistance
+    # Decision
+    result = decision_engine(
+        price,
+        ema20,
+        ema50,
+        ema200,
+        rsi,
+        atr,
+        structure,
+        support,
+        resistance
     )
 
-    bias = decision["bias"]
-
-    # -----------------------------------------------------
-    # TRADE PLAN
-    # -----------------------------------------------------
+    bias = result["bias"]
 
     entry = None
+    entry_zone = None
     stop_loss = None
-    take_profit = {
+
+    targets = {
         "TP1": None,
         "TP2": None,
         "TP3": None
     }
 
-    risk_reward = None
+    rr = None
 
-    if atr and bias in ["BUY", "SELL"]:
+    # Trade plan
+    if bias in ["BUY", "SELL"] and atr:
 
         entry = round(price, 5)
 
@@ -432,28 +680,20 @@ def analyze_market_data(symbol, interval):
 
             if risk > 0:
 
-                take_profit["TP1"] = round(
-                    entry + risk,
-                    5
-                )
-
-                take_profit["TP2"] = round(
-                    entry + risk * 2,
-                    5
-                )
-
-                take_profit["TP3"] = round(
-                    entry + risk * 3,
-                    5
-                )
-
-                risk_reward = {
-                    "TP1": 1.0,
-                    "TP2": 2.0,
-                    "TP3": 3.0
+                targets = {
+                    "TP1": round(entry + risk, 5),
+                    "TP2": round(entry + risk * 2, 5),
+                    "TP3": round(entry + risk * 3, 5)
                 }
 
-        elif bias == "SELL":
+                rr = "1:1 / 1:2 / 1:3"
+
+            entry_zone = {
+                "low": round(price - atr * 0.25, 5),
+                "high": round(price + atr * 0.10, 5)
+            }
+
+        else:
 
             stop_loss = round(
                 max(resistance, price + atr * 1.5),
@@ -464,50 +704,18 @@ def analyze_market_data(symbol, interval):
 
             if risk > 0:
 
-                take_profit["TP1"] = round(
-                    entry - risk,
-                    5
-                )
-
-                take_profit["TP2"] = round(
-                    entry - risk * 2,
-                    5
-                )
-
-                take_profit["TP3"] = round(
-                    entry - risk * 3,
-                    5
-                )
-
-                risk_reward = {
-                    "TP1": 1.0,
-                    "TP2": 2.0,
-                    "TP3": 3.0
+                targets = {
+                    "TP1": round(entry - risk, 5),
+                    "TP2": round(entry - risk * 2, 5),
+                    "TP3": round(entry - risk * 3, 5)
                 }
 
-    # -----------------------------------------------------
-    # ENTRY ZONE
-    # -----------------------------------------------------
+                rr = "1:1 / 1:2 / 1:3"
 
-    entry_zone = None
-
-    if bias == "BUY" and atr:
-
-        entry_zone = {
-            "low": round(price - atr * 0.25, 5),
-            "high": round(price + atr * 0.10, 5)
-        }
-
-    elif bias == "SELL" and atr:
-
-        entry_zone = {
-            "low": round(price - atr * 0.10, 5),
-            "high": round(price + atr * 0.25, 5)
-        }
-
-    # -----------------------------------------------------
-    # RETURN
-    # -----------------------------------------------------
+            entry_zone = {
+                "low": round(price - atr * 0.10, 5),
+                "high": round(price + atr * 0.25, 5)
+            }
 
     return {
         "engine": "APEX Decision Engine V2",
@@ -523,11 +731,11 @@ def analyze_market_data(symbol, interval):
 
         "decision": {
             "bias": bias,
-            "confidence_score": decision["confidence"],
-            "bullish_score": decision["bullish_score"],
-            "bearish_score": decision["bearish_score"],
-            "reasons": decision["reasons"],
-            "is_extended": decision["extended"]
+            "confidence_score": result["confidence"],
+            "bullish_score": result["bullish_score"],
+            "bearish_score": result["bearish_score"],
+            "reasons": result["reasons"],
+            "overextended": result["overextended"]
         },
 
         "indicators": {
@@ -541,16 +749,16 @@ def analyze_market_data(symbol, interval):
         "levels": {
             "support": round(support, 5),
             "resistance": round(resistance, 5),
-            "near_support": decision["near_support"],
-            "near_resistance": decision["near_resistance"]
+            "near_support": result["near_support"],
+            "near_resistance": result["near_resistance"]
         },
 
         "trade_plan": {
             "entry": entry,
             "entry_zone": entry_zone,
             "stop_loss": stop_loss,
-            "take_profit": take_profit,
-            "risk_reward": risk_reward
+            "take_profit": targets,
+            "risk_reward": rr
         },
 
         "swings": {
@@ -561,40 +769,38 @@ def analyze_market_data(symbol, interval):
             "last_swing_low": (
                 swing_lows[-1]["price"]
                 if swing_lows else None
-            ),
-            "swing_high_count": len(swing_highs),
-            "swing_low_count": len(swing_lows)
+            )
         },
 
         "candles_analyzed": len(candles),
 
         "disclaimer": (
-            "Confidence score represents indicator confluence, "
-            "not probability of winning. This is market analysis, "
-            "not financial advice."
+            "Confidence is indicator confluence, "
+            "not win probability. Not financial advice."
         )
     }
 
 
 # =========================================================
-# APEX ANALYSIS ENDPOINT
+# ANALYSIS API
 # =========================================================
+
 @app.get("/api/analysis")
 def apex_analysis(
     symbol: str = Query("XAU/USD"),
     interval: str = Query("5min")
 ):
 
-    allowed_intervals = [
+    allowed = [
         "1min", "5min", "15min", "30min",
         "1h", "2h", "4h", "1day"
     ]
 
-    if interval not in allowed_intervals:
+    if interval not in allowed:
+
         raise HTTPException(
-            status_code=400,
-            detail="Unsupported timeframe"
+            400,
+            "Unsupported timeframe"
         )
 
     return analyze_market_data(symbol, interval)
-
