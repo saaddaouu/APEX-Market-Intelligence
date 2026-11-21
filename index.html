@@ -837,7 +837,44 @@ async function loadAnalysis() {
     setText("dataStatus", "LIVE");
 }
 
-async function refreshDashboard() {
+async function async function refreshDashboard() {
+
+    setText("dataStatus", "UPDATING");
+
+    const results = await Promise.allSettled([
+        loadCandles(),
+        loadPrice(),
+        loadAnalysis()
+    ]);
+
+    const candleResult = results[0];
+    const priceResult = results[1];
+    const analysisResult = results[2];
+
+    if (candleResult.status === "rejected") {
+        console.error("Chart Error:", candleResult.reason);
+    }
+
+    if (priceResult.status === "rejected") {
+        console.error("Price Error:", priceResult.reason);
+    }
+
+    if (analysisResult.status === "rejected") {
+        console.error("Analysis Error:", analysisResult.reason);
+    }
+
+    const chartOK = candleResult.status === "fulfilled";
+    const priceOK = priceResult.status === "fulfilled";
+    const analysisOK = analysisResult.status === "fulfilled";
+
+    if (chartOK || priceOK || analysisOK) {
+        setText("dataStatus", "LIVE");
+        setText("chartStatus", `${selectedTF} · ${selectedSymbol}`);
+    } else {
+        setText("dataStatus", "CONNECTION ERROR");
+        setText("chartStatus", "Unable to load market data");
+    }
+} {
 
     setText("dataStatus", "UPDATING");
 
