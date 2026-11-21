@@ -704,6 +704,21 @@ async function loadCandles() {
     candleSeries.setData(formatted);
 
     chart.timeScale().fitContent();
+
+chart.timeScale().applyOptions({
+    barSpacing: 8,
+    rightOffset: 12,
+    minBarSpacing: 3,
+    timeVisible: true
+});
+
+chart.priceScale("right").applyOptions({
+    autoScale: true,
+    scaleMargins: {
+        top: 0.10,
+        bottom: 0.10
+    }
+});
 }
 
 async function loadPrice() {
