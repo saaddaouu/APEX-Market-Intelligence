@@ -288,3 +288,270 @@ def timeframes():
             "1h", "4h", "1day"
         ]
     }
+
+# =========================================================
+# APEX MARKET ANALYSIS ENGINE
+# =========================================================
+
+def calculate_ema(values, period):
+    if len(values) < period:
+        return None
+
+    multiplier = 2 / (period + 1)
+    ema = sum(values[:period]) / period
+
+    for price in values[period:]:
+        ema = (price * multiplier) + (ema * (1 - multiplier))
+
+    return round(ema, 5)
+
+
+def calculate_rsi(values, period=14):
+    if len(values) <= period:
+        return None
+
+    gains = []
+    losses = []
+
+    for i in range(1, len(values)):
+        change = values[i] - values[i - 1]
+        gains.append(max(change, 0))
+        losses.append(max(-change, 0))
+
+    avg_gain = sum(gains[:period]) / period
+    avg_loss = sum(losses[:period]) / period
+
+    for i in range(period, len(gains)):
+        avg_gain = ((avg_gain * (period - 1)) + gains[i]) / period
+        avg_loss = ((avg_loss * (period - 1)) + losses[i]) / period
+
+    if avg_loss == 0:
+        return 100.0
+
+    rs = avg_gain / avg_loss
+    return round(100 - (100 / (1 + rs)), 2)
+
+
+def find_swings(candles, strength=3):
+
+    highs = []
+    lows = []
+
+    for i in range(strength, len(candles) - strength):
+
+        current_high = candles[i]["high"]
+        current_low = candles[i]["low"]
+
+        left = candles[i - strength:i]
+        right = candles[i + 1:i + strength + 1]
+
+        if all(current_high > c["high"] for c in left + right):
+            highs.append({
+                "index": i,
+                "price": current_high
+            })
+
+        if all(current_low < c["low"] for c in left + right):
+            lows.append({
+                "index": i,
+                "price": current_low
+            })
+
+    return highs, lows
+
+
+def detect_structure(highs, lows):
+
+    structure = "UNDEFINED"
+
+    if len(highs) >= 2 and len(lows) >= 2:
+
+        higher_high = highs[-1]["price"] > highs[-2]["price"]
+        higher_low = lows[-1]["price"] > lows[-2]["price"]
+
+        lower_high = highs[-1]["price"] < highs[-2]["price"]
+        lower_low = lows[-1]["price"] < lows[-2]["price"]
+
+        if higher_high and higher_low:
+            structure = "BULLISH (HH + HL)"
+
+        elif lower_high and lower_low:
+            structure = "BEARISH (LH + LL)"
+
+        elif higher_high and lower_low:
+            structure = "EXPANDING"
+
+        else:
+            structure = "RANGING / TRANSITION"
+
+    return structure
+
+
+def analyze_market_data(symbol, interval):
+
+    data = twelve_data_request(
+        "time_series",
+        {
+            "symbol": symbol,
+            "interval": interval,
+            "outputsize": 200,
+            "timezone": "UTC"
+        }
+    )
+
+    raw_values = data.get("values", [])
+
+    if len(raw_values) < 50:
+        raise HTTPException(
+            status_code=502,
+            detail="Not enough candles for analysis."
+        )
+
+    candles = []
+
+    for c in reversed(raw_values):
+
+        candles.append({
+            "time": c["datetime"],
+            "open": float(c["open"]),
+            "high": float(c["high"]),
+            "low": float(c["low"]),
+            "close": float(c["close"])
+        })
+
+    closes = [c["close"] for c in candles]
+    highs_list = [c["high"] for c in candles]
+    lows_list = [c["low"] for c in candles]
+
+    current_price = closes[-1]
+
+    ema20 = calculate_ema(closes, 20)
+    ema50 = calculate_ema(closes, 50)
+    ema200 = calculate_ema(closes, 200)
+
+    rsi = calculate_rsi(closes)
+
+    swing_highs, swing_lows = find_swings(candles, 3)
+
+    structure = detect_structure(swing_highs, swing_lows)
+
+    support = (
+        round(swing_lows[-1]["price"], 5)
+        if swing_lows else round(min(lows_list[-50:]), 5)
+    )
+
+    resistance = (
+        round(swing_highs[-1]["price"], 5)
+        if swing_highs else round(max(highs_list[-50:]), 5)
+    )
+
+    # Trend determination
+    if ema20 and ema50 and current_price > ema20 > ema50:
+        trend = "BULLISH"
+
+    elif ema20 and ema50 and current_price < ema20 < ema50:
+        trend = "BEARISH"
+
+    else:
+        trend = "SIDEWAYS / MIXED"
+
+    # Market bias
+    bullish_points = 0
+    bearish_points = 0
+
+    if trend == "BULLISH":
+        bullish_points += 2
+
+    elif trend == "BEARISH":
+        bearish_points += 2
+
+    if structure.startswith("BULLISH"):
+        bullish_points += 2
+
+    elif structure.startswith("BEARISH"):
+        bearish_points += 2
+
+    if ema200:
+
+        if current_price > ema200:
+            bullish_points += 1
+
+        elif current_price < ema200:
+            bearish_points += 1
+
+    if rsi is not None:
+
+        if 50 < rsi < 70:
+            bullish_points += 1
+
+        elif 30 < rsi < 50:
+            bearish_points += 1
+
+    if bullish_points > bearish_points:
+        bias = "BUY"
+
+    elif bearish_points > bullish_points:
+        bias = "SELL"
+
+    else:
+        bias = "NEUTRAL"
+
+    total_points = bullish_points + bearish_points
+
+    confidence = (
+        round(max(bullish_points, bearish_points) / total_points * 100)
+        if total_points else 0
+    )
+
+    return {
+        "symbol": symbol,
+        "timeframe": interval,
+        "price": round(current_price, 5),
+        "trend": trend,
+        "market_structure": structure,
+        "bias": bias,
+        "confidence": confidence,
+        "indicators": {
+            "ema20": ema20,
+            "ema50": ema50,
+            "ema200": ema200,
+            "rsi14": rsi
+        },
+        "levels": {
+            "support": support,
+            "resistance": resistance
+        },
+        "swings": {
+            "last_swing_high": swing_highs[-1]["price"] if swing_highs else None,
+            "last_swing_low": swing_lows[-1]["price"] if swing_lows else None,
+            "swing_high_count": len(swing_highs),
+            "swing_low_count": len(swing_lows)
+        },
+        "candles_analyzed": len(candles),
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }
+
+
+# =========================================================
+# APEX ANALYSIS API
+# =========================================================
+
+@app.get("/api/analysis")
+def apex_analysis(
+    symbol: str = Query("XAU/USD"),
+    interval: str = Query("5min")
+):
+
+    allowed_intervals = [
+        "1min", "5min", "15min", "30min",
+        "1h", "2h", "4h", "1day"
+    ]
+
+    if interval not in allowed_intervals:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Unsupported timeframe."
+        )
+
+    return analyze_market_data(symbol, interval)
