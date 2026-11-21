@@ -3,18 +3,27 @@ import os
 import requests
 
 from datetime import datetime, timezone
+from pathlib import Path
+
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 
 # =========================================================
-# APEX MARKET INTELLIGENCE
+# APEX CONFIGURATION
 # =========================================================
+
+BASE_URL = "https://api.twelvedata.com"
+API_KEY = os.getenv("TWELVE_DATA_API_KEY")
+
+ROOT_DIR = Path(__file__).resolve().parent
+INDEX_FILE = ROOT_DIR / "index.html"
 
 app = FastAPI(
     title="APEX Market Intelligence",
-    description="Live market data and trading intelligence API",
-    version="1.2.0"
+    description="APEX Live Market Data and Intelligence API",
+    version="1.3.0"
 )
 
 app.add_middleware(
@@ -24,48 +33,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 # =========================================================
-# CONFIGURATION
+# FRONTEND
 # =========================================================
 
-API_KEY = os.getenv("TWELVE_DATA_API_KEY")
-BASE_URL = "https://api.twelvedata.com"
+@app.get("/", include_in_schema=False)
+def dashboard():
 
-TIMEOUT = 20
+    if not INDEX_FILE.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="APEX dashboard index.html not found."
+        )
 
-ALLOWED_INTERVALS = [
-    "1min",
-    "5min",
-    "15min",
-    "30min",
-    "45min",
-    "1h",
-    "2h",
-    "4h",
-    "1day",
-    "1week",
-    "1month"
-]
+    return FileResponse(INDEX_FILE)
 
 
 # =========================================================
-# HOME
-# =========================================================
-
-@app.get("/")
-def home():
-
-    return {
-        "project": "APEX Market Intelligence",
-        "status": "online",
-        "version": "1.2.0",
-        "data_provider": "Twelve Data",
-        "server_time": datetime.now(timezone.utc).isoformat()
-    }
-
-
-# =========================================================
-# HEALTH CHECK
+# HEALTH
 # =========================================================
 
 @app.get("/api/health")
@@ -73,85 +59,47 @@ def health():
 
     return {
         "status": "healthy",
-        "service": "APEX Market Intelligence",
+        "project": "APEX Market Intelligence",
+        "version": "1.3.0",
         "api_key_configured": bool(API_KEY),
-        "server_time": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
 # =========================================================
-# ANALYSIS ENGINES
+# ENGINES
 # =========================================================
 
 @app.get("/api/engines")
-def get_engines():
+def engines():
 
     return {
         "engines": [
-            {
-                "id": 1,
-                "name": "HTF Key Levels",
-                "status": "planned"
-            },
-            {
-                "id": 2,
-                "name": "Supply & Demand",
-                "status": "planned"
-            },
-            {
-                "id": 3,
-                "name": "Intraday Supply & Demand",
-                "status": "planned"
-            },
-            {
-                "id": 4,
-                "name": "Daily & 4H POI",
-                "status": "planned"
-            },
-            {
-                "id": 5,
-                "name": "1H & 15M POI",
-                "status": "planned"
-            },
-            {
-                "id": 6,
-                "name": "Market Structure",
-                "status": "planned"
-            },
-            {
-                "id": 7,
-                "name": "Market Sentiment",
-                "status": "planned"
-            },
-            {
-                "id": 8,
-                "name": "1M Price Action",
-                "status": "planned"
-            },
-            {
-                "id": 9,
-                "name": "News & Economic Analysis",
-                "status": "planned"
-            },
-            {
-                "id": 10,
-                "name": "Final Decision Engine",
-                "status": "planned"
-            }
+            "HTF Key Levels",
+            "Supply & Demand",
+            "Intraday Supply & Demand",
+            "Daily & 4H POI",
+            "1H & 15M POI",
+            "Market Structure",
+            "Market Sentiment",
+            "1M Price Action",
+            "News & Economic Analysis",
+            "Final Decision Engine"
         ]
     }
 
 
 # =========================================================
-# TWELVE DATA REQUEST ENGINE
+# TWELVE DATA REQUEST
 # =========================================================
 
-def twelve_data_request(endpoint: str, params: dict):
+def twelve_data_request(endpoint, params):
 
     if not API_KEY:
+
         raise HTTPException(
             status_code=500,
-            detail="Twelve Data API key is not configured on Render."
+            detail="Twelve Data API key is missing."
         )
 
     request_params = params.copy()
@@ -162,40 +110,40 @@ def twelve_data_request(endpoint: str, params: dict):
         response = requests.get(
             f"{BASE_URL}/{endpoint}",
             params=request_params,
-            timeout=TIMEOUT
+            timeout=20
         )
 
-        try:
-            data = response.json()
-        except ValueException:
-            data = {}
+        data = response.json()
 
     except requests.Timeout:
 
         raise HTTPException(
             status_code=504,
-            detail="Twelve Data request timed out."
+            detail="Market data request timed out."
         )
 
     except requests.RequestException:
 
         raise HTTPException(
             status_code=502,
-            detail="Unable to connect to Twelve Data."
+            detail="Market data connection failed."
         )
 
-    # Provider error detection
+    except ValueError:
+
+        raise HTTPException(
+            status_code=502,
+            detail="Invalid response from market data provider."
+        )
+
     if response.status_code >= 400 or data.get("status") == "error":
 
         raise HTTPException(
             status_code=502,
             detail={
                 "provider": "Twelve Data",
-                "http_status": response.status_code,
-                "provider_code": data.get("code"),
-                "provider_message": data.get("message", "Unknown provider error"),
-                "symbol": params.get("symbol"),
-                "endpoint": endpoint
+                "code": data.get("code"),
+                "message": data.get("message", "Provider error")
             }
         )
 
@@ -203,39 +151,31 @@ def twelve_data_request(endpoint: str, params: dict):
 
 
 # =========================================================
-# LIVE MARKET PRICE
+# PRICE
 # =========================================================
 
 @app.get("/api/market/price")
-def get_market_price(
-    symbol: str = Query("XAU/USD", min_length=1, max_length=30)
+def market_price(
+    symbol: str = Query("XAU/USD")
 ):
 
     data = twelve_data_request(
         "price",
-        {
-            "symbol": symbol
-        }
+        {"symbol": symbol}
     )
-
-    if "price" not in data:
-
-        raise HTTPException(
-            status_code=502,
-            detail="Price was not returned by the provider."
-        )
 
     try:
         price = float(data["price"])
-    except (TypeError, ValueError):
+
+    except (KeyError, TypeError, ValueError):
 
         raise HTTPException(
             status_code=502,
-            detail="Invalid price returned by provider."
+            detail="Invalid price response."
         )
 
     return {
-        "symbol": symbol.upper(),
+        "symbol": symbol,
         "price": price,
         "source": "Twelve Data",
         "timestamp": datetime.now(timezone.utc).isoformat()
@@ -243,33 +183,27 @@ def get_market_price(
 
 
 # =========================================================
-# HISTORICAL CANDLES
+# CANDLES
 # =========================================================
 
 @app.get("/api/market/candles")
-def get_market_candles(
-
-    symbol: str = Query("XAU/USD", min_length=1, max_length=30),
-
+def market_candles(
+    symbol: str = Query("XAU/USD"),
     interval: str = Query("5min"),
-
     outputsize: int = Query(100, ge=1, le=5000)
-
 ):
 
-    # Validate timeframe
+    allowed = [
+        "1min", "5min", "15min", "30min", "45min",
+        "1h", "2h", "4h", "1day", "1week", "1month"
+    ]
 
-    if interval not in ALLOWED_INTERVALS:
+    if interval not in allowed:
 
         raise HTTPException(
             status_code=400,
-            detail={
-                "error": "Invalid interval",
-                "allowed_intervals": ALLOWED_INTERVALS
-            }
+            detail={"allowed_intervals": allowed}
         )
-
-    # Request candles from Twelve Data
 
     data = twelve_data_request(
         "time_series",
@@ -281,79 +215,76 @@ def get_market_candles(
         }
     )
 
-    values = data.get("values")
-
-    if not values:
-
-        raise HTTPException(
-            status_code=502,
-            detail={
-                "provider": "Twelve Data",
-                "message": "No candle data returned.",
-                "symbol": symbol,
-                "interval": interval,
-                "provider_response": data
-            }
-        )
+    values = data.get("values", [])
 
     candles = []
 
     try:
 
-        for candle in reversed(values):
+        for c in reversed(values):
 
             candles.append({
-                "time": candle["datetime"],
-                "open": float(candle["open"]),
-                "high": float(candle["high"]),
-                "low": float(candle["low"]),
-                "close": float(candle["close"]),
-                "volume": float(candle.get("volume") or 0)
+                "time": c["datetime"],
+                "open": float(c["open"]),
+                "high": float(c["high"]),
+                "low": float(c["low"]),
+                "close": float(c["close"]),
+                "volume": float(c.get("volume") or 0)
             })
 
     except (KeyError, TypeError, ValueError):
 
         raise HTTPException(
             status_code=502,
-            detail="Invalid candle format received from provider."
+            detail="Candle formatting failed."
+        )
+
+    if not candles:
+
+        raise HTTPException(
+            status_code=502,
+            detail="No market candles returned."
         )
 
     return {
-        "symbol": symbol.upper(),
+        "symbol": symbol,
         "interval": interval,
-        "source": "Twelve Data",
         "count": len(candles),
+        "source": "Twelve Data",
         "candles": candles,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 
 # =========================================================
-# AVAILABLE SYMBOLS
+# SYMBOLS
 # =========================================================
 
 @app.get("/api/market/symbols")
-def get_symbols():
+def symbols():
 
     return {
         "symbols": [
-            {"symbol": "XAU/USD", "name": "Gold"},
-            {"symbol": "EUR/USD", "name": "Euro / US Dollar"},
-            {"symbol": "GBP/USD", "name": "British Pound / US Dollar"},
-            {"symbol": "USD/JPY", "name": "US Dollar / Japanese Yen"},
-            {"symbol": "BTC/USD", "name": "Bitcoin"},
-            {"symbol": "ETH/USD", "name": "Ethereum"}
+            "XAU/USD",
+            "EUR/USD",
+            "GBP/USD",
+            "USD/JPY",
+            "BTC/USD",
+            "ETH/USD"
         ]
     }
 
 
 # =========================================================
-# AVAILABLE TIMEFRAMES
+# TIMEFRAMES
 # =========================================================
 
 @app.get("/api/market/timeframes")
-def get_timeframes():
+def timeframes():
 
     return {
-        "timeframes": ALLOWED_INTERVALS
+        "timeframes": [
+            "1min", "5min", "15min", "30min",
+            "1h", "4h", "1day"
+        ]
     }
